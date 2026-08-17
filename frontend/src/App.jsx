@@ -1,7 +1,8 @@
 import React from 'react'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { createBrowserRouter, RouterProvider, Navigate } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
-import { AuthProvider, useAuth } from './contexts/AuthContext'
+import { AuthProvider } from './contexts/AuthContext'
+import { useAuth } from './contexts/AuthContext'
 import AppShell from './components/layout/AppShell'
 
 // Auth
@@ -73,56 +74,55 @@ const CUST   = ['customer']
 const FREE   = ['freelancer']
 
 export default function App() {
+  const router = createBrowserRouter([
+    { path: '/', element: <RoleRedirect /> },
+    { path: '/login', element: <LoginPage /> },
+    { path: '/register', element: <RegisterPage /> },
+
+    // Customer
+    { path: '/customer', element: W(CUST, CustomerDashboard) },
+    { path: '/customer/projects', element: W(CUST, CustomerProjects) },
+    { path: '/customer/projects/:id', element: W(CUST, CustomerProjectDetail) },
+    { path: '/customer/submit-request', element: W(CUST, SubmitRequest) },
+    { path: '/customer/tickets', element: W(CUST, TicketsPage) },
+    { path: '/customer/tickets/:id', element: W(CUST, TicketDetail) },
+    { path: '/customer/wallet', element: W(CUST, WalletPage) },
+    { path: '/customer/notifications', element: W(CUST, NotificationsPage) },
+    { path: '/customer/profile', element: W(CUST, ProfilePage) },
+
+    // Freelancer
+    { path: '/freelancer', element: W(FREE, FreelancerDashboard) },
+    { path: '/freelancer/projects', element: W(FREE, FreelancerProjects) },
+    { path: '/freelancer/projects/:id', element: W(FREE, FreelancerProjectDetail) },
+    { path: '/freelancer/tickets', element: W(FREE, TicketsPage) },
+    { path: '/freelancer/tickets/:id', element: W(FREE, TicketDetail) },
+    { path: '/freelancer/wallet', element: W(FREE, WalletPage) },
+    { path: '/freelancer/notifications', element: W(FREE, NotificationsPage) },
+    { path: '/freelancer/profile', element: W(FREE, ProfilePage) },
+
+    // Admin
+    { path: '/admin', element: W(ADMIN, AdminDashboard) },
+    { path: '/admin/requests', element: W(ADMIN, AdminRequests) },
+    { path: '/admin/projects', element: W(ADMIN, AdminProjects) },
+    { path: '/admin/projects/:id', element: W(ADMIN, AdminProjectDetail) },
+    { path: '/admin/users', element: W(ADMIN, AdminUsers) },
+    { path: '/admin/tickets', element: W(ADMIN, TicketsPage) },
+    { path: '/admin/tickets/:id', element: W(ADMIN, TicketDetail) },
+    { path: '/admin/wallets', element: W(ADMIN, AdminWallets) },
+    { path: '/admin/notifications', element: W(ADMIN, NotificationsPage) },
+    { path: '/admin/profile', element: W(ADMIN, ProfilePage) },
+
+    { path: '*', element: <NotFoundPage /> },
+  ], { future: { v7_startTransition: true, v7_relativeSplatPath: true } })
+
   return (
-    <BrowserRouter>
-      <AuthProvider>
-        <Toaster position="top-right" toastOptions={{
-          style: { background:'var(--bg-card)', color:'var(--text)', border:'1px solid var(--border)', fontFamily:'var(--font)', fontSize:'0.875rem' },
-          success: { iconTheme: { primary:'var(--green)',  secondary:'white' } },
-          error:   { iconTheme: { primary:'var(--red)',    secondary:'white' } },
-        }} />
-        <Routes>
-          {/* Public */}
-          <Route path="/"         element={<RoleRedirect />} />
-          <Route path="/login"    element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
-
-          {/* ── Customer ──────────────────────────────────────────────── */}
-          <Route path="/customer"                    element={W(CUST, CustomerDashboard)} />
-          <Route path="/customer/projects"           element={W(CUST, CustomerProjects)} />
-          <Route path="/customer/projects/:id"       element={W(CUST, CustomerProjectDetail)} />
-          <Route path="/customer/submit-request"     element={W(CUST, SubmitRequest)} />
-          <Route path="/customer/tickets"            element={W(CUST, TicketsPage)} />
-          <Route path="/customer/tickets/:id"        element={W(CUST, TicketDetail)} />
-          <Route path="/customer/wallet"             element={W(CUST, WalletPage)} />
-          <Route path="/customer/notifications"      element={W(CUST, NotificationsPage)} />
-          <Route path="/customer/profile"            element={W(CUST, ProfilePage)} />
-
-          {/* ── Freelancer ────────────────────────────────────────────── */}
-          <Route path="/freelancer"                  element={W(FREE, FreelancerDashboard)} />
-          <Route path="/freelancer/projects"         element={W(FREE, FreelancerProjects)} />
-          <Route path="/freelancer/projects/:id"     element={W(FREE, FreelancerProjectDetail)} />
-          <Route path="/freelancer/tickets"          element={W(FREE, TicketsPage)} />
-          <Route path="/freelancer/tickets/:id"      element={W(FREE, TicketDetail)} />
-          <Route path="/freelancer/wallet"           element={W(FREE, WalletPage)} />
-          <Route path="/freelancer/notifications"    element={W(FREE, NotificationsPage)} />
-          <Route path="/freelancer/profile"          element={W(FREE, ProfilePage)} />
-
-          {/* ── Admin / Supervisor ────────────────────────────────────── */}
-          <Route path="/admin"                       element={W(ADMIN, AdminDashboard)} />
-          <Route path="/admin/requests"              element={W(ADMIN, AdminRequests)} />
-          <Route path="/admin/projects"              element={W(ADMIN, AdminProjects)} />
-          <Route path="/admin/projects/:id"          element={W(ADMIN, AdminProjectDetail)} />
-          <Route path="/admin/users"                 element={W(ADMIN, AdminUsers)} />
-          <Route path="/admin/tickets"               element={W(ADMIN, TicketsPage)} />
-          <Route path="/admin/tickets/:id"           element={W(ADMIN, TicketDetail)} />
-          <Route path="/admin/wallets"               element={W(ADMIN, AdminWallets)} />
-          <Route path="/admin/notifications"         element={W(ADMIN, NotificationsPage)} />
-          <Route path="/admin/profile"               element={W(ADMIN, ProfilePage)} />
-
-          <Route path="*" element={<NotFoundPage />} />
-        </Routes>
-      </AuthProvider>
-    </BrowserRouter>
+    <AuthProvider>
+      <Toaster position="top-right" toastOptions={{
+        style: { background:'var(--bg-card)', color:'var(--text)', border:'1px solid var(--border)', fontFamily:'var(--font)', fontSize:'0.875rem' },
+        success: { iconTheme: { primary:'var(--green)',  secondary:'white' } },
+        error:   { iconTheme: { primary:'var(--red)',    secondary:'white' } },
+      }} />
+      <RouterProvider router={router} />
+    </AuthProvider>
   )
 }

@@ -44,6 +44,7 @@ class ProjectRequest(models.Model):
     reviewed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
                                      related_name='reviewed_requests')
     reviewed_at = models.DateTimeField(null=True, blank=True)
+    max_revisions = models.PositiveIntegerField(default=3, help_text='Maximum revisions allowed when converted to project')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -76,6 +77,14 @@ class Project(models.Model):
     customer = models.ForeignKey(User, on_delete=models.CASCADE, related_name='projects_as_customer')
     title = models.CharField(max_length=300)
     description = models.TextField()
+    # Additional editable fields mirrored from ProjectRequest
+    requirements = models.TextField(blank=True)
+    budget_min = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    budget_max = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    preferred_style = models.TextField(blank=True)
+    target_audience = models.TextField(blank=True)
+    special_constraints = models.TextField(blank=True)
+    sample_references = models.TextField(blank=True, help_text='URLs or descriptions of reference works')
     project_type = models.CharField(max_length=30, choices=ProjectRequest.ProjectType.choices)
     required_level = models.ForeignKey(FreelancerLevel, on_delete=models.SET_NULL, null=True, blank=True)
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)

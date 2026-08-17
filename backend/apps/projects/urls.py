@@ -1,10 +1,15 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import ProjectRequestViewSet, ProjectViewSet, FreelancerDashboardView
+from .views import (
+    ProjectRequestViewSet, ProjectViewSet, FreelancerDashboardView,
+    ProjectRevisionViewSet, FreelancerBidViewSet
+)
 from .views_milestones import ProjectMilestoneViewSet
 
 router = DefaultRouter()
 router.register('requests', ProjectRequestViewSet, basename='project-requests')
+router.register('revisions', ProjectRevisionViewSet, basename='project-revisions')
+router.register('bids', FreelancerBidViewSet, basename='freelancer-bids')
 router.register('', ProjectViewSet, basename='projects')
 
 milestone_list = ProjectMilestoneViewSet.as_view({'get': 'list', 'post': 'create'})

@@ -41,32 +41,34 @@ export default function CustomerProjects() {
         ) : (
           <div style={{ display:'flex', flexDirection:'column', gap:'0.6rem' }}>
             {filtered.map(p => (
-              <Link key={p.id} to={`/customer/projects/${p.id}`} style={{ textDecoration:'none' }}>
-                <Card style={{ padding:'12px 16px', cursor:'pointer', transition:'border-color 0.15s' }}
-                  onMouseEnter={e=>e.currentTarget.style.borderColor='var(--accent)'}
-                  onMouseLeave={e=>e.currentTarget.style.borderColor='var(--border)'}
-                >
-                  <div style={{ display:'flex', alignItems:'center', gap:'1rem', flexWrap:'wrap' }}>
-                    <div style={{ flex:1, minWidth:0 }}>
-                      <div style={{ display:'flex', alignItems:'center', gap:'0.5rem', flexWrap:'wrap' }}>
-                        <span style={{ fontWeight:600, color:'var(--text)', fontSize:'0.875rem' }}>{p.title}</span>
-                        <Badge status={p.status} label={p.status_display || p.status} />
-                      </div>
-                      <p style={{ fontSize:'0.76rem', color:'var(--text-muted)', marginTop:3 }}>
-                        {p.type_display || p.project_type} · {fmt.relative(p.created_at)}
-                        {p.deadline && ` · Due ${fmt.date(p.deadline)}`}
-                      </p>
-                    </div>
-                    {tab==='projects' && p.current_assignment && (
-                      <span style={{ fontSize:'0.76rem', color:'var(--text-muted)' }}>
-                        👤 {p.current_assignment.freelancer?.full_name}
-                      </span>
-                    )}
-                    <span style={{ color:'var(--text-muted)', fontSize:'0.9rem' }}>›</span>
-                  </div>
-                </Card>
-              </Link>
-            ))}
+  <div key={p.id} style={{ position: 'relative' }}>
+    <Link to={`/customer/projects/${p.id}`} style={{ textDecoration:'none' }}>
+      <Card style={{ padding:'12px 16px', cursor:'pointer', transition:'border-color 0.15s' }}
+        onMouseEnter={e=>e.currentTarget.style.borderColor='var(--accent)'}
+        onMouseLeave={e=>e.currentTarget.style.borderColor='var(--border)'}
+      >
+        <div style={{ display:'flex', alignItems:'center', gap:'1rem', flexWrap:'wrap' }}>
+          <div style={{ flex:1, minWidth:0 }}>
+            <div style={{ display:'flex', alignItems:'center', gap:'0.5rem', flexWrap:'wrap' }}>
+              <span style={{ fontWeight:600, color:'var(--text)', fontSize:'0.875rem' }}>{p.title}</span>
+              <Badge status={p.status} label={p.status_display || p.status} />
+            </div>
+            <p style={{ fontSize:'0.76rem', color:'var(--text-muted)', marginTop:3 }}>
+              {p.type_display || p.project_type} · {fmt.relative(p.created_at)}
+              {p.deadline && ` · Due ${fmt.date(p.deadline)}`}
+            </p>
+          </div>
+          {tab==='projects' && p.current_assignment && (
+            <span style={{ fontSize:'0.76rem', color:'var(--text-muted)' }}>
+              👤 {p.current_assignment.freelancer?.full_name}
+            </span>
+          )}
+          <span style={{ color:'var(--text-muted)', fontSize:'0.9rem' }}>›</span>
+        </div>
+      </Card>
+    </Link>
+  </div>
+))}
           </div>
         )
       }

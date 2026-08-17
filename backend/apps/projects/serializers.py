@@ -24,10 +24,17 @@ class UserMinimalSerializer(serializers.ModelSerializer):
 
 
 class ProjectRequestSerializer(serializers.ModelSerializer):
-    customer       = UserMinimalSerializer(read_only=True)
-    status_display = serializers.CharField(source='get_status_display', read_only=True)
-    type_display   = serializers.CharField(source='get_project_type_display', read_only=True)
-    attachments    = serializers.SerializerMethodField()
+    customer           = UserMinimalSerializer(read_only=True)
+    status_display     = serializers.CharField(source='get_status_display', read_only=True)
+    type_display       = serializers.CharField(source='get_project_type_display', read_only=True)
+    attachments        = serializers.SerializerMethodField()
+    revisions          = serializers.SerializerMethodField()
+    revision_count     = serializers.SerializerMethodField()
+    current_assignment = serializers.SerializerMethodField()
+    status_history     = serializers.SerializerMethodField()
+    milestones         = serializers.SerializerMethodField()
+    can_revise         = serializers.SerializerMethodField()
+
     class Meta:
         model  = ProjectRequest
         fields = [
@@ -35,12 +42,70 @@ class ProjectRequestSerializer(serializers.ModelSerializer):
             'requirements', 'budget_min', 'budget_max', 'deadline',
             'preferred_style', 'target_audience', 'special_constraints',
             'sample_references', 'status', 'status_display', 'review_notes',
-            'reviewed_by', 'reviewed_at', 'attachments', 'created_at', 'updated_at',
+            'reviewed_by', 'reviewed_at', 'attachments',
+            'revisions', 'max_revisions', 'revision_count', 'can_revise',
+            'current_assignment', 'status_history', 'milestones',
+            'created_at', 'updated_at',
         ]
-        read_only_fields = ['customer', 'status', 'review_notes', 'reviewed_by', 'reviewed_at']
+        read_only_fields = ['customer', 'status', 'review_notes', 'reviewed_by', 'reviewed_at', 'revision_count']
+
     def get_attachments(self, obj):
         from apps.files.serializers import UploadedFileSerializer
         return UploadedFileSerializer(obj.files.all(), many=True, context=self.context).data
+
+    def _get_project(self, obj):
+        return getattr(obj, 'project', None)
+
+    def get_revisions(self, obj):
+        project = self._get_project(obj)
+        if project:
+            return ProjectRevisionSerializer(project.revisions.all(), many=True, context=self.context).data
+        return []
+
+    def get_current_assignment(self, obj):
+        project = self._get_project(obj)
+        if not project:
+            return None
+        assignment = project.assignments.filter(status__in=[ProjectAssignment.Status.ASSIGNED, ProjectAssignment.Status.ACCEPTED, ProjectAssignment.Status.ACTIVE]).first()
+        return ProjectAssignmentSerializer(assignment, context=self.context).data if assignment else None
+
+    def get_status_history(self, obj):
+        project = self._get_project(obj)
+        if not project:
+            return []
+        return ProjectStatusHistorySerializer(project.status_history.all(), many=True, context=self.context).data
+
+    def get_milestones(self, obj):
+        project = self._get_project(obj)
+        if not project:
+            return []
+        return ProjectMilestoneSerializer(project.milestones.all(), many=True, context=self.context).data
+
+    def get_revision_count(self, obj):
+        project = self._get_project(obj)
+        if project:
+            return project.revision_count
+        return 0
+
+    def get_can_revise(self, obj):
+        project = self._get_project(obj)
+        if project:
+            return project.revision_count < project.max_revisions
+        # Fallback to request's max_revisions if no linked project
+        return getattr(obj, 'revision_count', 0) < getattr(obj, 'max_revisions', 0)
+
+    def update(self, instance, validated_data):
+        # If max_revisions is being updated and request is linked to a project, update project too
+        if 'max_revisions' in validated_data:
+            max_rev = validated_data['max_revisions']
+            project = self._get_project(instance)
+            if project and max_rev is not None:
+                project.max_revisions = max_rev
+                project.save()
+        # Let super().update() handle updating the request's max_revisions
+        instance = super().update(instance, validated_data)
+        return instance
+
 
 
 class ProjectStatusHistorySerializer(serializers.ModelSerializer):
@@ -91,6 +156,7 @@ class ProjectSerializer(serializers.ModelSerializer):
             'id', 'title', 'description', 'project_type', 'type_display',
             'customer', 'required_level', 'status', 'status_display',
             'assignment_mode', 'budget', 'deadline', 'priority',
+            'requirements', 'budget_min', 'budget_max', 'preferred_style', 'target_audience', 'special_constraints', 'sample_references',
             'max_revisions', 'revision_count', 'can_revise',
             'is_public_to_level', 'internal_notes',
             'current_assignment', 'status_history', 'milestones', 'revisions',
@@ -119,14 +185,19 @@ class ProjectCreateSerializer(serializers.ModelSerializer):
         model  = Project
         fields = [
             'title', 'description', 'project_type',
+            'requirements', 'preferred_style', 'target_audience', 'special_constraints', 'sample_references',
             'customer_id', 'required_level_id',
             'assignment_mode', 'budget', 'deadline', 'priority',
+            'budget_min', 'budget_max',
             'max_revisions', 'is_public_to_level', 'internal_notes',
         ]
     def create(self, validated_data):
         from apps.accounts.models import FreelancerLevel
         customer_id       = validated_data.pop('customer_id', None)
         required_level_id = validated_data.pop('required_level_id', None)
+        # Preserve budget_min/budget_max on project creation if provided
+        budget_min = validated_data.pop('budget_min', None)
+        budget_max = validated_data.pop('budget_max', None)
         if customer_id:
             try:
                 validated_data['customer'] = User.objects.get(id=customer_id)
@@ -143,6 +214,10 @@ class ProjectCreateSerializer(serializers.ModelSerializer):
                 validated_data['required_level'] = FreelancerLevel.objects.get(id=required_level_id)
             except FreelancerLevel.DoesNotExist:
                 pass
+        if budget_min is not None:
+            validated_data['budget_min'] = budget_min
+        if budget_max is not None:
+            validated_data['budget_max'] = budget_max
         return super().create(validated_data)
 
 

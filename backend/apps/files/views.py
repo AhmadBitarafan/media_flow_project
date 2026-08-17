@@ -4,8 +4,9 @@ from rest_framework.parsers import MultiPartParser, FormParser
 from django.http import FileResponse, Http404
 from django.conf import settings
 import mimetypes
+import os
 
-from .models import UploadedFile
+from .models import UploadedFile, DANGEROUS_EXTENSIONS, DANGEROUS_CONTENT_TYPES
 from .serializers import UploadedFileSerializer, FileUploadSerializer
 
 
@@ -19,11 +20,30 @@ class FileUploadView(generics.CreateAPIView):
         data = serializer.validated_data
         file = data['file']
 
-        # Validate size
+        # Validate file size
         if file.size > settings.MAX_UPLOAD_SIZE:
-            return Response({'error': 'File too large.'}, status=400)
+            max_mb = settings.MAX_UPLOAD_SIZE // (1024 * 1024)
+            return Response({'error': f'File too large. Maximum size is {max_mb}MB.'}, status=400)
 
-        content_type = file.content_type or mimetypes.guess_type(file.name)[0] or 'application/octet-stream'
+        # Validate file extension
+        filename = file.name
+        file_ext = os.path.splitext(filename)[1].lower()
+        
+        if file_ext in DANGEROUS_EXTENSIONS:
+            return Response(
+                {'error': f'File type {file_ext} is not allowed for security reasons.'},
+                status=400
+            )
+
+        # Determine and validate content type
+        content_type = file.content_type or mimetypes.guess_type(filename)[0] or 'application/octet-stream'
+        
+        if content_type in DANGEROUS_CONTENT_TYPES:
+            return Response(
+                {'error': f'File type is not allowed for security reasons.'},
+                status=400
+            )
+
         if content_type not in settings.ALLOWED_FILE_TYPES:
             return Response({'error': f'File type {content_type} not allowed.'}, status=400)
 

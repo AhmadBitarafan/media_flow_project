@@ -19,6 +19,7 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt.token_blacklist',
     'corsheaders',
     'django_filters',
+    'drf_spectacular',
     # Local apps
     'apps.accounts',
     'apps.projects',
@@ -29,7 +30,7 @@ INSTALLED_APPS = [
     'apps.reviews',
     'apps.audit',
     # swagger installed app
-    'drf_yasg',
+    # 'drf_yasg',
 ]
 
 MIDDLEWARE = [
@@ -106,6 +107,22 @@ REST_FRAMEWORK = {
     'DEFAULT_RENDERER_CLASSES': [
         'rest_framework.renderers.JSONRenderer',
     ],
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+}
+
+# drf-spectacular settings
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'MediaFlow API',
+    'DESCRIPTION': 'MediaFlow - Collaborative Media Production Platform API',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+    'SCHEMA_PATH_PREFIX': '/api/',
+    'AUTHENTICATION_FLOWS': {
+        'JWT': {
+            'tokenUrl': '/api/auth/token/',
+            'refreshUrl': '/api/auth/token/refresh/',
+        }
+    },
 }
 
 # JWT Settings
@@ -149,3 +166,11 @@ SMS_FROM_NUMBER = config('SMS_FROM_NUMBER', default='')
 # Email
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='noreply@mediaflow.io')
+
+# CORS Configuration
+CORS_ALLOWED_ORIGINS = config(
+    'CORS_ALLOWED_ORIGINS',
+    default='http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,http://127.0.0.1:3000',
+    cast=lambda v: v.split(',')
+)
+CORS_ALLOW_CREDENTIALS = True

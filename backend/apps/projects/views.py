@@ -140,7 +140,9 @@ class ProjectViewSet(AuditMixin, viewsets.ModelViewSet):
             )
 
     def get_permissions(self):
-        if self.action in ['create', 'update', 'partial_update', 'destroy']:
+        if self.action in ['update', 'partial_update', 'destroy']:
+            return [permissions.IsAuthenticated(), IsCustomerOrAdmin()]
+        if self.action == 'create':
             return [permissions.IsAuthenticated(), IsAdminOrSupervisor()]
         return [permissions.IsAuthenticated()]
 
@@ -417,3 +419,60 @@ class FreelancerDashboardView(generics.GenericAPIView):
             'total_assignments': len(assignments),
             'can_accept_projects': getattr(getattr(user, 'freelancer_profile', None), 'can_accept_projects', False),
         })
+
+
+# ── Standalone ViewSets for ProjectRevision and FreelancerBid ───────────────────
+
+class ProjectRevisionViewSet(viewsets.ModelViewSet):
+    """ViewSet for managing project revisions independently."""
+    serializer_class = ProjectRevisionSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filterset_fields = ['status', 'project']
+    search_fields = ['description']
+    ordering_fields = ['created_at', 'revision_number']
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.is_supervisor:
+            return ProjectRevision.objects.select_related('project', 'requested_by', 'reviewed_by').all()
+        # Customers see revisions for their projects, freelancers see revisions for assigned projects
+        return ProjectRevision.objects.filter(
+            Q(project__customer=user) | Q(project__assignments__freelancer=user)
+        ).distinct().select_related('project', 'requested_by', 'reviewed_by')
+
+    def get_permissions(self):
+        if self.action in ['update', 'partial_update', 'destroy']:
+            return [permissions.IsAuthenticated(), IsAdminOrSupervisor()]
+        return [permissions.IsAuthenticated()]
+
+
+class FreelancerBidViewSet(viewsets.ModelViewSet):
+    """ViewSet for managing freelancer bids independently."""
+    serializer_class = FreelancerBidSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filterset_fields = ['status', 'project']
+    ordering_fields = ['created_at', 'proposed_budget']
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.is_supervisor:
+            return FreelancerBid.objects.select_related('project', 'freelancer').all()
+        elif user.is_freelancer:
+            # Freelancers see their own bids
+            return FreelancerBid.objects.filter(freelancer=user).select_related('project')
+        else:
+            # Customers see bids on their projects
+            return FreelancerBid.objects.filter(project__customer=user).select_related('project', 'freelancer')
+
+    def get_permissions(self):
+        if self.action == 'create':
+            return [permissions.IsAuthenticated()]
+        if self.action in ['update', 'partial_update', 'destroy']:
+            return [permissions.IsAuthenticated(), IsAdminOrSupervisor()]
+        return [permissions.IsAuthenticated()]
+
+    def perform_create(self, serializer):
+        # Automatically set freelancer to current user when creating a bid
+        serializer.save(freelancer=self.request.user)

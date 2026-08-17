@@ -50,6 +50,12 @@ export const authApi = {
   me:             ()  => api.get('/auth/me/'),
   updateMe:       (d) => api.patch('/auth/me/', d),
   changePassword: (d) => api.post('/auth/change-password/', d),
+  uploadAvatar:   (file) => {
+    const fd = new FormData()
+    fd.append('avatar', file)
+    return api.patch('/auth/me/', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+  },
+  deleteAvatar:   ()  => api.patch('/auth/me/', { avatar: null }),
 }
 
 // ── Users ─────────────────────────────────────────────────────────────────────
@@ -69,7 +75,10 @@ export const usersApi = {
 export const projectsApi = {
   // Requests
   listRequests:    (p)     => api.get('/projects/requests/', { params: p }),
+  getRequest:      (id)    => api.get(`/projects/requests/${id}/`),
   createRequest:   (d)     => api.post('/projects/requests/', d),
+  updateRequest:   (id, d) => api.patch(`/projects/requests/${id}/`, d),
+  removeRequest:   (id)    => api.delete(`/projects/requests/${id}/`),
   reviewRequest:   (id, d) => api.post(`/projects/requests/${id}/review/`, d),
   convertRequest:  (id, d) => api.post(`/projects/requests/${id}/convert_to_project/`, d),
   // Projects
@@ -77,6 +86,7 @@ export const projectsApi = {
   get:              (id)    => api.get(`/projects/${id}/`),
   create:           (d)     => api.post('/projects/', d),
   update:           (id, d) => api.patch(`/projects/${id}/`, d),
+  remove:           (id)    => api.delete(`/projects/${id}/`),
   assign:           (id, d) => api.post(`/projects/${id}/assign/`, d),
   updateStatus:     (id, d) => api.post(`/projects/${id}/update_status/`, d),
   requestRevision:  (id, d) => api.post(`/projects/${id}/request_revision/`, d),
@@ -89,6 +99,15 @@ export const projectsApi = {
   milestones:       (pid)   => api.get(`/projects/${pid}/milestones/`),
   createMilestone:  (pid,d) => api.post(`/projects/${pid}/milestones/`, d),
   flDashboard:      ()      => api.get('/projects/freelancer/dashboard/'),
+  // Revisions (standalone)
+  listRevisions:    (p)     => api.get('/projects/revisions/', { params: p }),
+  getRevision:      (id)    => api.get(`/projects/revisions/${id}/`),
+  updateRevision:   (id, d) => api.patch(`/projects/revisions/${id}/`, d),
+  // Bids (standalone)
+  listBids:         (p)     => api.get('/projects/bids/', { params: p }),
+  getBid:           (id)    => api.get(`/projects/bids/${id}/`),
+  createBid:        (d)     => api.post('/projects/bids/', d),
+  updateBid:        (id, d) => api.patch(`/projects/bids/${id}/`, d),
 }
 
 // ── Tickets ───────────────────────────────────────────────────────────────────

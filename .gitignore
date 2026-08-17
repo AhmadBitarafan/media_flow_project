@@ -1,0 +1,29 @@
+# OS / Editor junk
+.DS_Store
+Thumbs.db
+desktop.ini
+$RECYCLE.BIN/
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# Archives / build artifacts
+*.rar
+*.zip
+*.7z
+*.tar.gz
+
+# Logs
+*.log
+npm-debug.log*
+
+# Local environment files
+.env
+.env.local
+.env.*.local
+
+# Python (root-level fallback)
+__pycache__/
+*.py[cod]
+venv/
+.venv/

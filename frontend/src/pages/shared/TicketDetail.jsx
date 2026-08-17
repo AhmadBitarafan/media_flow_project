@@ -6,6 +6,46 @@ import { Card, Badge, Btn } from '../../components/ui'
 import { fmt } from '../../utils'
 import toast from 'react-hot-toast'
 
+// Maximum file size: 50MB
+const MAX_FILE_SIZE = 50 * 1024 * 1024
+
+// Allowed file types for ticket uploads
+const ALLOWED_FILE_TYPES = [
+  'image/jpeg', 'image/png', 'image/gif', 'image/webp',
+  'video/mp4', 'video/quicktime', 'video/webm',
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'text/plain', 'text/csv',
+]
+
+// Dangerous file extensions to block
+const DANGEROUS_EXTENSIONS = ['.exe', '.bat', '.cmd', '.sh', '.ps1', '.jar', '.app', '.msi', '.py', '.rb', '.php']
+
+function validateFile(file) {
+  // Check file size
+  if (file.size > MAX_FILE_SIZE) {
+    return `File is too large. Maximum size is 50MB. Your file is ${(file.size / (1024 * 1024)).toFixed(1)}MB.`
+  }
+
+  // Check file extension
+  const fileName = file.name
+  const fileExt = fileName.substring(fileName.lastIndexOf('.')).toLowerCase()
+  
+  if (DANGEROUS_EXTENSIONS.includes(fileExt)) {
+    return `File type ${fileExt} is not allowed for security reasons.`
+  }
+
+  // Check MIME type
+  if (!ALLOWED_FILE_TYPES.includes(file.type) && file.type !== '') {
+    return `File type "${file.type}" is not allowed. Allowed types: images, videos, PDFs, documents, and text files.`
+  }
+
+  return null
+}
+
 export default function TicketDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -16,6 +56,7 @@ export default function TicketDetail() {
   const [sending, setSending] = useState(false)
   const [internal, setInternal] = useState(false)
   const [file, setFile] = useState(null)
+  const [fileError, setFileError] = useState('')
   const endRef = useRef(null)
 
   const isSupport = user?.role === 'admin' || user?.role === 'supervisor'
@@ -24,19 +65,58 @@ export default function TicketDetail() {
   useEffect(() => { load() }, [id])
   useEffect(() => { endRef.current?.scrollIntoView({ behavior:'smooth' }) }, [ticket?.messages?.length])
 
+  const handleFileChange = (e) => {
+    const selectedFile = e.target.files[0]
+    if (!selectedFile) {
+      setFile(null)
+      setFileError('')
+      return
+    }
+
+    const error = validateFile(selectedFile)
+    if (error) {
+      setFileError(error)
+      setFile(null)
+      // Reset file input
+      e.target.value = ''
+    } else {
+      setFileError('')
+      setFile(selectedFile)
+    }
+  }
+
   const handleReply = async () => {
     if (!reply.trim()) return
+    if (fileError) {
+      toast.error('Please fix file issues before sending.')
+      return
+    }
+    
     setSending(true)
     try {
       if (file) {
         const fd = new FormData()
-        fd.append('file', file); fd.append('category', 'ticket'); fd.append('ticket', id)
-        await filesApi.upload(fd).catch(()=>{})
+        fd.append('file', file)
+        fd.append('category', 'ticket')
+        fd.append('ticket', id)
+        const uploadResp = await filesApi.upload(fd)
+        if (!uploadResp.data || uploadResp.status !== 201) {
+          toast.error('File upload failed')
+          setSending(false)
+          return
+        }
       }
       await ticketsApi.reply(id, { content: reply, is_internal: internal && isSupport })
-      setReply(''); setFile(null); setInternal(false)
+      setReply('')
+      setFile(null)
+      setFileError('')
+      setInternal(false)
+      toast.success('Reply sent')
       load()
-    } catch { toast.error('Failed to send reply') }
+    } catch (err) {
+      const errMsg = err.response?.data?.error || err.response?.data?.file?.[0] || 'Failed to send reply'
+      toast.error(errMsg)
+    }
     finally { setSending(false) }
   }
 
@@ -120,10 +200,22 @@ export default function TicketDetail() {
           />
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', flexWrap:'wrap', gap:'0.75rem' }}>
             <div style={{ display:'flex', gap:'1rem', alignItems:'center', flexWrap:'wrap' }}>
-              <label style={{ cursor:'pointer', fontSize:'0.82rem', color:'var(--text-muted)', display:'flex', alignItems:'center', gap:4 }}>
-                <input type="file" style={{ display:'none' }} onChange={e=>setFile(e.target.files[0])} />
-                📎 {file ? <span style={{ color:'var(--accent)' }}>{file.name}</span> : 'Attach file'}
-              </label>
+              <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
+                <label style={{ cursor:'pointer', fontSize:'0.82rem', color:'var(--text-muted)', display:'flex', alignItems:'center', gap:4 }}>
+                  <input type="file" style={{ display:'none' }} onChange={handleFileChange} />
+                  📎 {file ? <span style={{ color:'var(--accent)' }}>{file.name}</span> : 'Attach file'}
+                </label>
+                {fileError && (
+                  <span style={{ fontSize:'0.75rem', color:'var(--red)', marginLeft:4 }}>
+                    ❌ {fileError}
+                  </span>
+                )}
+                {file && !fileError && (
+                  <span style={{ fontSize:'0.75rem', color:'var(--green)', marginLeft:4 }}>
+                    ✓ {(file.size / 1024).toFixed(1)} KB
+                  </span>
+                )}
+              </div>
               {isSupport && (
                 <label style={{ display:'flex', alignItems:'center', gap:4, fontSize:'0.82rem', color:'var(--text-muted)', cursor:'pointer' }}>
                   <input type="checkbox" checked={internal} onChange={e=>setInternal(e.target.checked)} />
@@ -131,7 +223,7 @@ export default function TicketDetail() {
                 </label>
               )}
             </div>
-            <Btn onClick={handleReply} loading={sending} disabled={!reply.trim()}>Send Reply</Btn>
+            <Btn onClick={handleReply} loading={sending} disabled={!reply.trim() || !!fileError}>Send Reply</Btn>
           </div>
         </Card>
       )}

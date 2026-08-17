@@ -51,6 +51,16 @@ function jalaliMonthLen(jy, jm) {
 
 function pad2(n){ return String(n).padStart(2,'0') }
 
+// Convert ISO YYYY-MM-DD to Jalali (Shamsi) string YYYY/MM/DD
+export function isoToJalali(iso) {
+  if (!iso) return ''
+  try {
+    const [gy,gm,gd] = iso.split('-').map(Number)
+    const [jy,jm,jd] = toJalali(gy,gm,gd)
+    return `${jy}/${pad2(jm)}/${pad2(jd)}`
+  } catch (e) { return iso }
+}
+
 const JALALI_MONTHS=['فروردین','اردیبهشت','خرداد','تیر','مرداد','شهریور','مهر','آبان','آذر','دی','بهمن','اسفند']
 const JALALI_DAYS=['ش','ی','د','س','چ','پ','ج']
 const GREG_MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December']

@@ -1,13 +1,50 @@
+# ===== Python =====
 __pycache__/
 *.py[cod]
 *.pyo
-.env
-*.sqlite3
-media/
-staticfiles/
+*.pyd
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# ===== Virtual environments =====
 venv/
 .venv/
-*.egg-info/
-dist/
-build/
+env/
+ENV/
+
+# ===== Django / DB =====
+*.sqlite3
+db.sqlite3
+db.sqlite3-journal
+media/
+staticfiles/
+static_collected/
+local_settings.py
+
+# ===== Secrets & local config =====
+.env
+.env.*
+!.env.example
+credentials.json
+service-account.json
+
+# ===== Local convenience scripts (dev only) =====
+env run.bat
+run django server.bat
+
+# ===== Tests & coverage =====
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+.tox/
+
+# ===== Editor / OS =====
+.vscode/*
+!.vscode/extensions.json
+.idea/
 .DS_Store
+Thumbs.db
+desktop.ini

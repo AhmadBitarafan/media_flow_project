@@ -5,6 +5,39 @@ import { Card, Badge, Btn, Modal, Field, Timeline } from '../../components/ui'
 import { fmt } from '../../utils'
 import toast from 'react-hot-toast'
 
+// Maximum file size: 50MB
+const MAX_FILE_SIZE = 50 * 1024 * 1024
+
+// Allowed file types for project uploads
+const ALLOWED_FILE_TYPES = [
+  'image/jpeg', 'image/png', 'image/gif', 'image/webp',
+  'video/mp4', 'video/quicktime', 'video/webm',
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'text/plain', 'text/csv',
+]
+
+// Dangerous file extensions to block
+const DANGEROUS_EXTENSIONS = ['.exe', '.bat', '.cmd', '.sh', '.ps1', '.jar', '.app', '.msi', '.py', '.rb', '.php']
+
+function validateFile(file) {
+  if (file.size > MAX_FILE_SIZE) {
+    return `File is too large. Maximum size is 50MB. Your file is ${(file.size / (1024 * 1024)).toFixed(1)}MB.`
+  }
+  const fileName = file.name
+  const fileExt = fileName.substring(fileName.lastIndexOf('.')).toLowerCase()
+  if (DANGEROUS_EXTENSIONS.includes(fileExt)) {
+    return `File type ${fileExt} is not allowed for security reasons.`
+  }
+  if (!ALLOWED_FILE_TYPES.includes(file.type) && file.type !== '') {
+    return `File type "${file.type}" is not allowed. Allowed types: images, videos, PDFs, documents, and text files.`
+  }
+  return null
+}
+
 export default function FreelancerProjectDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -13,6 +46,7 @@ export default function FreelancerProjectDetail() {
   const [bidModal, setBidModal] = useState(false)
   const [bid, setBid] = useState({ cover_letter:'', proposed_budget:'', estimated_days:'' })
   const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState('')
 
   const load = () => projectsApi.get(id).then(r => setProject(r.data)).catch(()=>{}).finally(() => setLoading(false))
   useEffect(() => { load() }, [id])
@@ -41,14 +75,56 @@ export default function FreelancerProjectDetail() {
       toast.success('Bid submitted!'); setBidModal(false); load()
     } catch(e) { toast.error(e.response?.data?.error || 'Already bid or not eligible') }
   }
-  const handleUpload = async (e) => {
-    const file = e.target.files[0]; if (!file) return
+
+  const handleUploadChange = (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    
+    const error = validateFile(file)
+    if (error) {
+      setUploadError(error)
+      toast.error(error)
+      e.target.value = ''
+      return
+    }
+    
+    setUploadError('')
+    handleUpload(file)
+  }
+
+  const handleUpload = async (file) => {
     setUploading(true)
     const fd = new FormData()
-    fd.append('file', file); fd.append('category', 'deliverable'); fd.append('project', id)
-    try { await filesApi.upload(fd); toast.success('Deliverable uploaded!'); load() }
-    catch { toast.error('Upload failed') }
+    fd.append('file', file)
+    fd.append('category', 'deliverable')
+    fd.append('project', id)
+    try { 
+      await filesApi.upload(fd)
+      toast.success('Deliverable uploaded!')
+      load() 
+    }
+    catch(err) {
+      const errMsg = err.response?.data?.error || 'Upload failed'
+      toast.error(errMsg)
+    }
     finally { setUploading(false) }
+  }
+
+  const handleDeleteFile = async (fileId) => {
+    if (!window.confirm('Delete this file?')) return
+    try {
+      await filesApi.remove(fileId)
+      toast.success('File deleted')
+      load()
+    } catch(err) {
+      toast.error('Failed to delete file')
+    }
+  }
+
+  const fileInputRef = React.useRef(null)
+
+  const triggerFileInput = () => {
+    fileInputRef.current?.click()
   }
 
   if (loading) return <div style={{ textAlign:'center', padding:'4rem', color:'var(--text-muted)' }}>Loading…</div>
@@ -84,8 +160,8 @@ export default function FreelancerProjectDetail() {
           {isOpen  && <Btn variant="success" onClick={() => setBidModal(true)}>🙋 Declare Readiness</Btn>}
           {isActive && (
             <label>
-              <input type="file" style={{ display:'none' }} onChange={handleUpload} />
-              <Btn variant="secondary" loading={uploading} onClick={()=>{}}>📎 Upload Deliverable</Btn>
+              <input ref={fileInputRef} type="file" style={{ display:'none' }} onChange={handleUploadChange} />
+              <Btn variant="secondary" loading={uploading} onClick={triggerFileInput}>📎 Upload Deliverable</Btn>
             </label>
           )}
         </div>
@@ -119,11 +195,14 @@ export default function FreelancerProjectDetail() {
             {!project.files?.length ? <p style={{ color:'var(--text-muted)', fontSize:'0.84rem' }}>No files yet</p> :
               project.files.map(f => (
                 <div key={f.id} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'8px 12px', background:'var(--bg-surface)', borderRadius:'var(--radius)', marginBottom:4 }}>
-                  <div>
+                  <div style={{ flex:1 }}>
                     <p style={{ fontSize:'0.85rem', fontWeight:500 }}>📄 {f.original_name}</p>
                     <p style={{ fontSize:'0.74rem', color:'var(--text-muted)' }}>{f.category} · {f.size_display} · {f.uploaded_by_name}</p>
                   </div>
-                  <a href={f.url} target="_blank" rel="noreferrer"><Btn size="xs" variant="secondary">↓</Btn></a>
+                  <div style={{ display:'flex', gap:'4px', alignItems:'center' }}>
+                    <a href={f.url} target="_blank" rel="noreferrer"><Btn size="xs" variant="secondary">↓</Btn></a>
+                    <Btn size="xs" variant="danger" onClick={() => handleDeleteFile(f.id)}>✕</Btn>
+                  </div>
                 </div>
               ))
             }

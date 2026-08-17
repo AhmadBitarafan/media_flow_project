@@ -1,8 +1,23 @@
 import { format, formatDistanceToNow, parseISO } from 'date-fns'
+import { isoToJalali } from '../components/ui/DatePicker'
 
 export const fmt = {
-  date: (d) => { try { return d ? format(parseISO(d), 'MMM d, yyyy') : '—' } catch { return d || '—' } },
-  datetime: (d) => { try { return d ? format(parseISO(d), 'MMM d, yyyy · h:mm a') : '—' } catch { return d || '—' } },
+  // Show dates as Shamsi (Jalali) YYYY/MM/DD for users
+  date: (d) => {
+    try {
+      if (!d) return '—'
+      const iso = String(d).split('T')[0]
+      return isoToJalali(iso)
+    } catch { return d || '—' }
+  },
+  datetime: (d) => {
+    try {
+      if (!d) return '—'
+      const iso = String(d).split('T')[0]
+      const time = format(parseISO(d), 'h:mm a')
+      return `${isoToJalali(iso)} · ${time}`
+    } catch { return d || '—' }
+  },
   relative: (d) => { try { return d ? formatDistanceToNow(parseISO(d), { addSuffix: true }) : '—' } catch { return '—' } },
   currency: (n, cur = 'USD') => n != null
     ? new Intl.NumberFormat('en-US', { style: 'currency', currency: cur }).format(n)

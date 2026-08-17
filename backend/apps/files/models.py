@@ -1,11 +1,35 @@
 import uuid
 import os
+import mimetypes
 from django.db import models
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.conf import settings
 
 User = get_user_model()
+
+# Dangerous file extensions that could execute code or be destructive
+DANGEROUS_EXTENSIONS = {
+    # Executables
+    '.exe', '.bat', '.cmd', '.com', '.scr', '.vbs', '.js', '.jar', '.app', '.msi',
+    # Shell scripts
+    '.sh', '.bash', '.zsh', '.ksh', '.csh', '.ps1', '.psm1', '.psc1',
+    # Archives with unknown content
+    '.iso', '.dmg',
+    # Code files (when uploaded to support tickets, these could be risky)
+    '.py', '.rb', '.php', '.jsp', '.asp', '.aspx', '.go', '.rs', '.cpp', '.c',
+}
+
+DANGEROUS_CONTENT_TYPES = {
+    'application/x-msdownload',
+    'application/x-msdos-program',
+    'application/x-executable',
+    'application/x-elf',
+    'application/x-sh',
+    'application/x-shellscript',
+    'application/x-perl',
+    'application/x-python',
+}
 
 
 def upload_to(instance, filename):
@@ -16,10 +40,25 @@ def upload_to(instance, filename):
 
 
 def validate_file(file):
+    # Check file size
     if file.size > settings.MAX_UPLOAD_SIZE:
-        raise ValidationError(f'File size exceeds maximum allowed ({settings.MAX_UPLOAD_SIZE // (1024*1024)}MB).')
-    content_type = getattr(file, 'content_type', None)
-    if content_type and content_type not in settings.ALLOWED_FILE_TYPES:
+        max_mb = settings.MAX_UPLOAD_SIZE // (1024 * 1024)
+        raise ValidationError(f'File size exceeds maximum allowed ({max_mb}MB).')
+    
+    # Check file extension
+    filename = getattr(file, 'name', '')
+    file_ext = os.path.splitext(filename)[1].lower()
+    
+    if file_ext in DANGEROUS_EXTENSIONS:
+        raise ValidationError(f'File type {file_ext} is not allowed for security reasons.')
+    
+    # Check content type
+    content_type = getattr(file, 'content_type', None) or mimetypes.guess_type(filename)[0] or 'application/octet-stream'
+    
+    if content_type in DANGEROUS_CONTENT_TYPES:
+        raise ValidationError(f'File type {content_type} is not allowed for security reasons.')
+    
+    if content_type not in settings.ALLOWED_FILE_TYPES:
         raise ValidationError(f'File type {content_type} is not allowed.')
 
 

@@ -172,12 +172,13 @@ export default function AppShell({ children }) {
             <div style={{ display:'flex', alignItems:'center', gap:'9px',
               padding:'8px 10px', borderRadius:'var(--radius)',
               background:'var(--bg-surface)', marginBottom:6 }}>
-              <div style={{ width:30, height:30, borderRadius:'50%',
-                background:'var(--accent)', flexShrink:0,
-                display:'flex', alignItems:'center', justifyContent:'center',
-                fontWeight:700, fontSize:'0.75rem', color:'white' }}>
-                {avatarLetters || '?'}
-              </div>
+              {user?.avatar && (
+                <div style={{ width:36, height:36, borderRadius:'50%',
+                  flexShrink:0, overflow:'hidden',
+                  display:'flex', alignItems:'center', justifyContent:'center' }}>
+                  <img src={user.avatar} alt="Avatar" style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+                </div>
+              )}
               <div style={{ minWidth:0 }}>
                 <p style={{ fontSize:'0.8rem', fontWeight:600, color:'var(--text)',
                   overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
@@ -258,11 +259,13 @@ export default function AppShell({ children }) {
               onMouseEnter={e => e.currentTarget.style.background='var(--bg-hover)'}
               onMouseLeave={e => e.currentTarget.style.background='var(--bg-surface)'}
             >
-              <div style={{ width:24, height:24, borderRadius:'50%',
-                background:'var(--accent)', display:'flex', alignItems:'center',
-                justifyContent:'center', fontWeight:700, fontSize:'0.65rem', color:'white', flexShrink:0 }}>
-                {avatarLetters || '?'}
-              </div>
+              {user?.avatar && (
+                <div style={{ width:28, height:28, borderRadius:'50%',
+                  display:'flex', alignItems:'center',
+                  justifyContent:'center', flexShrink:0, overflow:'hidden' }}>
+                  <img src={user.avatar} alt="Avatar" style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+                </div>
+              )}
               <span style={{ fontSize:'0.8rem', fontWeight:500, color:'var(--text)', whiteSpace:'nowrap' }}>
                 {user?.first_name}
               </span>

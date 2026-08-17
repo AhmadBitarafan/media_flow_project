@@ -14,6 +14,39 @@ const TYPES=[
 
 const STEPS=['Project Info','Style & Audience','Budget & Files']
 
+// Maximum file size: 50MB
+const MAX_FILE_SIZE = 50 * 1024 * 1024
+
+// Allowed file types for project uploads
+const ALLOWED_FILE_TYPES = [
+  'image/jpeg', 'image/png', 'image/gif', 'image/webp',
+  'video/mp4', 'video/quicktime', 'video/webm',
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'text/plain', 'text/csv',
+]
+
+// Dangerous file extensions to block
+const DANGEROUS_EXTENSIONS = ['.exe', '.bat', '.cmd', '.sh', '.ps1', '.jar', '.app', '.msi', '.py', '.rb', '.php']
+
+function validateFile(file) {
+  if (file.size > MAX_FILE_SIZE) {
+    return `File "${file.name}" is too large. Maximum size is 50MB. Your file is ${(file.size / (1024 * 1024)).toFixed(1)}MB.`
+  }
+  const fileName = file.name
+  const fileExt = fileName.substring(fileName.lastIndexOf('.')).toLowerCase()
+  if (DANGEROUS_EXTENSIONS.includes(fileExt)) {
+    return `File type ${fileExt} is not allowed for security reasons.`
+  }
+  if (!ALLOWED_FILE_TYPES.includes(file.type) && file.type !== '') {
+    return `File type "${file.type}" is not allowed. Allowed types: images, videos, PDFs, documents, and text files.`
+  }
+  return null
+}
+
 export default function SubmitRequest() {
   const navigate=useNavigate()
   const [step,setStep]=useState(1)
@@ -23,6 +56,7 @@ export default function SubmitRequest() {
     project_type:'',title:'',description:'',requirements:'',
     budget_min:'',budget_max:'',deadline:'',
     preferred_style:'',target_audience:'',special_constraints:'',sample_references:'',
+    max_revisions:'',
   })
   const fv=(k)=>(e)=>setForm(x=>({...x,[k]:e.target.value}))
   const fd=(k)=>(v)=>setForm(x=>({...x,[k]:v}))
@@ -46,6 +80,7 @@ export default function SubmitRequest() {
       if(!payload.budget_min) delete payload.budget_min
       if(!payload.budget_max) delete payload.budget_max
       if(!payload.deadline)   delete payload.deadline
+      if(!payload.max_revisions && payload.max_revisions !== 0) delete payload.max_revisions
       const {data:req}=await projectsApi.createRequest(payload)
       for(const file of files){
         const fd=new FormData()
@@ -63,7 +98,18 @@ export default function SubmitRequest() {
     }finally{setSaving(false)}
   }
 
-  const addFiles=(newFiles)=>setFiles(x=>[...x,...Array.from(newFiles)])
+  const addFiles=(newFiles)=>{
+    const validFiles = []
+    Array.from(newFiles).forEach(file => {
+      const error = validateFile(file)
+      if (error) {
+        toast.error(error)
+      } else {
+        validFiles.push(file)
+      }
+    })
+    setFiles(x=>[...x,...validFiles])
+  }
   const removeFile=(i)=>setFiles(x=>x.filter((_,j)=>j!==i))
 
   return(
@@ -141,13 +187,25 @@ export default function SubmitRequest() {
               </Field>
             </div>
 
-            <DatePicker
-              label="Project Deadline"
-              value={form.deadline}
-              onChange={fd('deadline')}
-              placeholder="Select your deadline…"
-              hint="Supports both Gregorian and Solar Hijri (Shamsi) calendars — click the toggle at the bottom of the picker"
-            />
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'1rem'}}>
+              <DatePicker
+                label="Project Deadline"
+                value={form.deadline}
+                onChange={fd('deadline')}
+                placeholder="Select your deadline…"
+                hint="Supports both Gregorian and Solar Hijri (Shamsi) calendars — click the toggle at the bottom of the picker"
+              />
+              <Field label="Max Revisions Allowed" hint="How many revision rounds should freelancers be allowed?">
+                <input 
+                  type="number" 
+                  min="0" 
+                  max="10" 
+                  value={form.max_revisions} 
+                  onChange={e=>setForm(f=>({...f,max_revisions: e.target.value === '' ? '' : parseInt(e.target.value, 10)}))}
+                  placeholder="e.g. 3"
+                />
+              </Field>
+            </div>
 
             <Field label="Attachments" hint="Upload reference images, brand assets, briefs, mood boards (max 50MB each)">
               <div
@@ -185,6 +243,7 @@ export default function SubmitRequest() {
               <span>Title:</span> {form.title||'—'}<br/>
               {form.deadline&&<><span>Deadline:</span> {form.deadline}<br/></>}
               {(form.budget_min||form.budget_max)&&<><span>Budget:</span> ${form.budget_min||0} – ${form.budget_max||'open'}<br/></>}
+              {(form.max_revisions||form.max_revisions===0)&&<><span>Max Revisions:</span> {form.max_revisions}<br/></>}
               {files.length>0&&<><span>Attachments:</span> {files.length} file{files.length!==1?'s':''}</>}
             </div>
           </>
